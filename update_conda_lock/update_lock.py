@@ -124,8 +124,20 @@ def get_local_pip_dependencies(pip_dependencies, root_dir):
             if isdir(dependency_path):
                 setup_path = join(dependency_path, 'setup.py')
                 if exists(setup_path):
-                    dependency_name = _run('python3 setup.py --name',
-                            cwd=dependency_path, return_stdout=True).strip()
+                    try:
+                        dependency_name = _run('python3 setup.py --name',
+                                cwd=dependency_path, return_stdout=True).strip()
+                    except CalledProcessError:
+                        print('Running `python3 ' + setup_path + ' --name` failed!')
+                        # Not so elegant fallback
+                        print('Trying to find the name in the file...')
+                        with open(setup_path) as f:
+                            name_match = search(
+                                    r'name\s*=\s*[\'\"](\S+)[\'\"]', f.read())
+                        # No match at this point is and should be fatal
+                        dependency_name = name_match.group(1)
+                        print('Found `' + dependency_name + '` name.')
+                        print()
                     local_pip_deps_names.append(dependency_name)
                     local_pip_dependencies.append(dependency)
     return (local_pip_dependencies, local_pip_deps_names)
